@@ -1,0 +1,4 @@
+1. Start the Backend (FastAPI API)
+python3 -m uvicorn app:app --reload
+
+2. Start the Frontend
