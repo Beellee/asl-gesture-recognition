@@ -38,7 +38,14 @@ To reset counters:
 1. Open the page.
 2. Open Console (F12 → Console tab).
 3. Run: ```localStorage.clear();```
+
 Next recordings will start again from sign_1.mp4.
+
+-- you can also set specific counting index for a sign
+
+```localStorage.setItem('id_sign', 10)```
+   
+
 
 ## Train Your Own Model 
 Use train_model.py to:
