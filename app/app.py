@@ -44,7 +44,7 @@ class SignLSTM(torch.nn.Module):
         return self.fc(out[:, -1, :])
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = SignLSTM(input_size=75*3, hidden_size=128, num_layers=2, num_classes=len(label_encoder.classes_))
+model = SignLSTM(input_size=75*3, hidden_size=128, num_layers=1, num_classes=len(label_encoder.classes_)) # cambiar de acuerdo con la estructura final 
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.to(device).eval()
 
@@ -120,6 +120,11 @@ async def predict(file: UploadFile = File(...)):
         idx = int(probs.argmax())
         sign = label_encoder.inverse_transform([idx])[0]
         confidence = float(probs[idx])
+    
+    print("Raw logits:", logits)
+    print("Probabilities:", probs)
+    print("Prediction:", sign, "| Confidence:", confidence)
+
 
     return {"sign": sign, "confidence": confidence}
 
@@ -127,3 +132,4 @@ async def predict(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
