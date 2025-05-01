@@ -33,8 +33,14 @@ async function onRecordingStop() {
 
 function toggleRecording() {
   if (!mediaRecorder) return;
-  if (recording) mediaRecorder.stop();
-  else { chunks = []; mediaRecorder.start(); }
+  if (recording){
+    mediaRecorder.stop();
+    video.classList.remove("recording");
+  }
+  else { 
+    chunks = []; mediaRecorder.start(); 
+    video.classList.add("recording");
+  }
   recording = !recording;
 }
 
