@@ -44,13 +44,13 @@ class SignLSTM(torch.nn.Module):
         return self.fc(out[:, -1, :])
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = SignLSTM(input_size=75*3, hidden_size=128, num_layers=1, num_classes=len(label_encoder.classes_)) # cambiar de acuerdo con la estructura final 
+model = SignLSTM(input_size=126, hidden_size=128, num_layers=1, num_classes=len(label_encoder.classes_)) # cambiar de acuerdo con la estructura final 
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.to(device).eval()
 
 # 4) MediaPipe Holistic for keypoints
 mp_holistic = mp.solutions.holistic.Holistic(
-    static_image_mode=True,
+    static_image_mode=False,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5,
 )
@@ -70,16 +70,13 @@ def extract_keypoint_sequence(video_path):
         res = mp_holistic.process(image)
 
         # collect 75 landmarks (pose 33 + 21 + 21 hands)
-        kp = np.zeros((75, 3), dtype=np.float32)
-        if res.pose_landmarks:
-            for i, lm in enumerate(res.pose_landmarks.landmark):
-                kp[i] = (lm.x, lm.y, lm.z)
+        kp = np.zeros((42, 3), dtype=np.float32)
         if res.left_hand_landmarks:
             for i, lm in enumerate(res.left_hand_landmarks.landmark):
-                kp[33 + i] = (lm.x, lm.y, lm.z)
+                kp[i] = (lm.x, lm.y, lm.z)
         if res.right_hand_landmarks:
             for i, lm in enumerate(res.right_hand_landmarks.landmark):
-                kp[33 + 21 + i] = (lm.x, lm.y, lm.z)
+                kp[21 + i] = (lm.x, lm.y, lm.z)
 
         seq.append(kp.reshape(-1))  # flatten to (225,)
 
