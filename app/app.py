@@ -16,7 +16,7 @@ from shared_elements.shared_utils import detect_active_window
 from shared_elements.shared_utils import fix_length
 from shared_elements.shared_utils import get_holistic_model
 from shared_elements.shared_utils import extract_keypoints_from_video
-from shared_elements.shared_utils import compute_hand_fraction
+from shared_elements.shared_utils import compute_hand_fractions
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 
@@ -37,8 +37,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 1) Modelo
 model = SignLSTM(input_dim=INPUT_DIM,
-                 hidden_dim=128,
-                 num_layers=1,
+                 hidden_dim=256,
+                 num_layers=2,
                  num_classes=NUM_CLASSES)
 state = torch.load(MODEL_PATH, map_location=device)
 model.load_state_dict(state)
@@ -103,12 +103,12 @@ async def predict(file: UploadFile = File(...)):
 
     # 6) Calcular duración normalizada y fracción de manos
     length_feat = np.array([duration / TARGET_LENGTH], dtype=np.float32)   # (1,)
-    hand_feat   = compute_hand_fraction(seq_fixed)                         # (1,)
+    hand_fracs   = compute_hand_fractions(seq_fixed)                         # (1,)
 
     # 7) Tensores y batch dim
     seq_tensor    = torch.from_numpy(seq_norm[np.newaxis,...]).to(device)     # (1,73,126)
     length_tensor = torch.from_numpy(length_feat[np.newaxis,...]).to(device) # (1,1)
-    hand_tensor   = torch.from_numpy(hand_feat[np.newaxis,...]).to(device)   # (1,1)
+    hand_tensor   = torch.from_numpy(hand_fracs[np.newaxis,...]).to(device)   # (1,1)
 
     # 8) Inferencia
     SIGNS = ['hello', 'bye', 'world', 'thank_you', 'yes', 'no', 'please', 'sorry', 'good', 'bad', 'me', 'you', 'love', 'help', 'stop']

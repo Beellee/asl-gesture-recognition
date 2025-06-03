@@ -114,15 +114,49 @@ def fix_length(seq: np.ndarray, target_length: int = 73):
         return np.concatenate([left, seq, right], axis=0)
 
 
-def compute_hand_fraction(seq_keypoints: np.ndarray) -> np.ndarray:
+def frame_speeds(seq: np.ndarray) -> np.ndarray:
     """
-    seq_keypoints: array (T=73, K=42, 3) solo manos.
-    Devuelve un array shape (1,) con la media de:
-      (presencia_izq + presencia_der) / 2 en cada frame,
-    normalizado a [0,1].
+    Calcula la velocidad frame a frame para cada mano por separado.
+    seq: array (T, 42, 3)
+    Devuelve speeds_left, speeds_right de shape (T-1,)
     """
-    # Detecta presencia de keypoints no nulos en cada frame
-    left_present  = np.any(seq_keypoints[:, :21, :2] != 0, axis=(1,2))
-    right_present = np.any(seq_keypoints[:, 21:, :2] != 0, axis=(1,2))
-    frac_per_frame = (left_present.astype(float) + right_present.astype(float)) / 2.0
-    return np.array([frac_per_frame.mean()], dtype=np.float32)
+    # diferencias entre frames
+    diffs = seq[1:] - seq[:-1]                      # (T-1, 42, 3)
+    # aplanar mano izquierda y derecha
+    left_diff  = diffs[:, :21, :]                   # (T-1, 21, 3)
+    right_diff = diffs[:, 21:, :]                   # (T-1, 21, 3)
+    # norma L2 por key-point y sumar
+    speeds_left  = np.linalg.norm(left_diff,  axis=2).sum(axis=1)  # (T-1,)
+    speeds_right = np.linalg.norm(right_diff, axis=2).sum(axis=1)
+    return speeds_left, speeds_right
+
+def compute_hand_fractions(seq: np.ndarray,
+                           move_thresh_ratio: float = 0.1) -> np.ndarray:
+    """
+    seq: array (T, 42, 3)
+    move_thresh_ratio: umbral relativo para considerar movimiento fuerte
+    Devuelve [frac_left, frac_right], fracción de frames con
+    keypoints visibles y movimiento significativo.
+    """
+    T, K, _ = seq.shape
+    if T < 2:
+        return np.array([0.0, 0.0], dtype=np.float32)
+
+    # calculamos velocidades
+    speeds_left, speeds_right = frame_speeds(seq)  # shapes (T-1,)
+
+    # umbrales absolutos
+    thr_left  = move_thresh_ratio * speeds_left.max()
+    thr_right = move_thresh_ratio * speeds_right.max()
+
+    # frame a frame: si la mano aparece Y se mueve por encima del umbral
+    left_present  = np.any(seq[:-1, :21, :2] != 0, axis=(1,2))
+    right_present = np.any(seq[:-1, 21:, :2] != 0, axis=(1,2))
+
+    left_active  = (left_present  & (speeds_left  > thr_left )).astype(float)
+    right_active = (right_present & (speeds_right > thr_right)).astype(float)
+
+    # fracción de frames (T-1) activos
+    frac_left  = left_active.mean()
+    frac_right = right_active.mean()
+    return np.array([frac_left, frac_right], dtype=np.float32)

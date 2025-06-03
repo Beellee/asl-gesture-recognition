@@ -23,13 +23,15 @@ class SignLSTM(nn.Module):
             batch_first  = True,
             dropout      = dropout if num_layers > 1 else 0.0
         )
-        self.fc1 = nn.Linear(hidden_dim + 2, 64)  # +2 para la duración y las manos
+        self.layernorm = nn.LayerNorm(hidden_dim*2) # LayerNorm entre capas para evitar sobreajuste.
+        self.fc1 = nn.Linear(hidden_dim +1 + 2, 64)  # +1 para la duracion y +2 para cada mano
         self.fc2 = nn.Linear(64, num_classes)
 
     def forward(self, x: torch.Tensor, lengths: torch.Tensor, hand_fracs: torch.Tensor) -> torch.Tensor:
         # x: (B, 73, 126), lengths: (B,1), hand_fracs: (B,1)
         _, (h_n, _) = self.lstm(x)        # h_n: (num_layers, B, hidden_dim)
         h = h_n[-1]                        # (B, hidden_dim), última capa
-        h_and_L = torch.cat([h, lengths, hand_fracs], dim=1)  # (B, hidden_dim+1)
-        y = F.relu(self.fc1(h_and_L))     # (B, 64)
+        feats = torch.cat([lengths, hand_fracs], dim=1)
+        h_and_feats = torch.cat([h, feats], dim=1)
+        y = F.relu(self.fc1(h_and_feats))     # (B, 64)
         return self.fc2(y)                # (B, num_classes)
